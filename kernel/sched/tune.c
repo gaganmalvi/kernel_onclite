@@ -1021,14 +1021,16 @@ schedtune_boostgroup_init(struct schedtune *st, int idx)
 	for_each_possible_cpu(cpu) {
 		bg = &per_cpu(cpu_boost_groups, cpu);
 		bg->group[idx].boost = 0;
-		bg->group[idx].valid = true;
+		bg->group[idx].tasks = 0;
 	}
 
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	boost_slots_init(st);
 #endif // CONFIG_DYNAMIC_STUNE_BOOST
 
-	return 0;
+	/* Keep track of allocated boost groups */
+	allocated_group[idx] = st;
+	st->idx = idx;
 }
 
 static struct cgroup_subsys_state *
@@ -1073,12 +1075,19 @@ out:
 static void
 schedtune_boostgroup_release(struct schedtune *st)
 {
+	struct boost_groups *bg;
+	int cpu;
+
+	/* Reset per CPUs boost group support */
+	for_each_possible_cpu(cpu) {
+		bg = &per_cpu(cpu_boost_groups, cpu);
+		bg->group[st->idx].boost = 0;
+	}
+
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 	/* Free dynamic boost slots */
 	boost_slots_release(st);
 #endif // CONFIG_DYNAMIC_STUNE_BOOST
-	/* Reset this boost group */
-	schedtune_boostgroup_update(st->idx, 0);
 
 	/* Keep track of allocated boost groups */
 	allocated_group[st->idx] = NULL;
