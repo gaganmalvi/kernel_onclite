@@ -261,7 +261,7 @@ static int clk_pwrcl_set_rate(struct clk_hw *hw, unsigned long rate,
 								PSTATE_STATUS));
 		if (curr_lval <= parent->osm_table[index].lval)
 			return 0;
-		udelay(50);
+		usleep_range(50, 100);
 	}
 	pr_err("cannot set %s to %lu\n", clk_hw_get_name(hw), rate);
 	return -ETIMEDOUT;
