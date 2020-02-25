@@ -76,7 +76,11 @@ Module.symvers
 include/config
 include/generated
 arch/*/include/generated
-
+AnyKernel3/
+stock/
+stock_32/
+out/
+clang/
 # stgit generated dirs
 patches-*
 
