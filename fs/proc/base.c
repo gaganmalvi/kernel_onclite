@@ -97,6 +97,21 @@
 
 #include "../../lib/kstrtox.h"
 
+struct task_kill_info {
+	struct task_struct *task;
+	struct work_struct work;
+};
+
+static void proc_kill_task(struct work_struct *work)
+{
+	struct task_kill_info *kinfo = container_of(work, typeof(*kinfo), work);
+	struct task_struct *task = kinfo->task;
+
+	send_sig(SIGKILL, task, 0);
+	put_task_struct(task);
+	kfree(kinfo);
+}
+
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
  *	certainly an error.  Permission checks need to happen during
@@ -1207,6 +1222,7 @@ static const struct file_operations proc_oom_adj_operations = {
 static ssize_t oom_score_adj_read(struct file *file, char __user *buf,
 					size_t count, loff_t *ppos)
 {
+	char task_comm[TASK_COMM_LEN];
 	struct task_struct *task = get_proc_task(file_inode(file));
 	char buffer[PROC_NUMBUF];
 	short oom_score_adj = OOM_SCORE_ADJ_MIN;
@@ -1223,6 +1239,8 @@ static ssize_t oom_score_adj_read(struct file *file, char __user *buf,
 static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 					size_t count, loff_t *ppos)
 {
+	char task_comm[TASK_COMM_LEN];
+	struct task_struct *task;
 	char buffer[PROC_NUMBUF];
 	int oom_score_adj;
 	int err;
@@ -1235,6 +1253,9 @@ static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 		goto out;
 	}
 
+	if (oom_score_adj >= 700)
+		strncpy(task_comm, task->comm, TASK_COMM_LEN);
+
 	err = kstrtoint(strstrip(buffer), 0, &oom_score_adj);
 	if (err)
 		goto out;
@@ -1246,6 +1267,21 @@ static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 
 	err = __set_oom_adj(file, oom_score_adj, false);
 out:
+	/* These apps burn through CPU in the background. Don't let them. */
+	if (!err && oom_score_adj >= 700) {
+		if (!strcmp(task_comm, "id.GoogleCamera") ||
+		    !strcmp(task_comm, "ndroid.settings")) {
+			struct task_kill_info *kinfo;
+
+			kinfo = kmalloc(sizeof(*kinfo), GFP_KERNEL);
+			if (kinfo) {
+				get_task_struct(task);
+				kinfo->task = task;
+				INIT_WORK(&kinfo->work, proc_kill_task);
+				schedule_work(&kinfo->work);
+			}
+		}
+	}
 	return err < 0 ? err : count;
 }
 
