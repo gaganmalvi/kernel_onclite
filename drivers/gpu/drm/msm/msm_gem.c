@@ -167,8 +167,6 @@ static void put_pages(struct drm_gem_object *obj)
 
 	if (msm_obj->pages) {
 		if (msm_obj->sgt) {
-<<<<<<< HEAD
-=======
 			/* For non-cached buffers, ensure the new
 			 * pages are clean because display controller,
 			 * GPU, etc. are not coherent:
@@ -176,7 +174,6 @@ static void put_pages(struct drm_gem_object *obj)
 			if (msm_obj->flags & (MSM_BO_WC|MSM_BO_UNCACHED))
 				sync_for_cpu(msm_obj);
 
->>>>>>> ed0445d8826c... drm/msm: stop abusing dma_map/unmap for cache
 			sg_free_table(msm_obj->sgt);
 			kfree(msm_obj->sgt);
 		}
