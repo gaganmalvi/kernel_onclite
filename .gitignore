@@ -57,7 +57,11 @@ Module.symvers
 # Debian directory (make deb-pkg)
 #
 /debian/
-
+/clang/
+/out/
+/stock/
+/stock_32/
+/AnyKernel3/
 #
 # tar directory (make tar*-pkg)
 #
